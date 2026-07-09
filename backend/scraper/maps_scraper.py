@@ -1,16 +1,6 @@
-"""
-Selenium scraper for Google Maps listings.
-
-Maps needs a real browser session (JS-rendered results, infinite scroll),
-which is why this uses Selenium instead of BeautifulSoup - unlike the
-directory sites, which are static HTML (see directory_scraper.py).
-"""
-
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 
 from scraper.rate_limiter import RateLimiter
 from scraper.config import MAPS_CATEGORIES, REGIONS
@@ -23,10 +13,10 @@ def build_driver(headless: bool = True):
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--window-size=1280,900")
 
-    # webdriver-manager downloads/matches the right ChromeDriver version
-    # automatically - no manual driver installs or PATH setup needed.
-    service = Service(ChromeDriverManager().install())
-    return webdriver.Chrome(service=service, options=options)
+    # Selenium 4.6+ has built-in driver management (Selenium Manager) -
+    # it downloads and matches the right ChromeDriver automatically.
+    # No webdriver-manager needed (its path resolution had a bug on Mac ARM).
+    return webdriver.Chrome(options=options)
 
 
 def search_maps(query: str, region: str, limiter: RateLimiter, driver=None):
