@@ -64,16 +64,26 @@ def scrape_directory_page(url: str, source_name: str, limiter: RateLimiter):
 
 
 def run_directory_scrape(region: str):
-    """Loop over configured directory sources for a region."""
+    """
+    Loop over configured directory sources for a region.
+
+    Each source is wrapped in try/except so one site failing (blocked,
+    down, wrong URL, etc.) does not crash the whole search - we log
+    the failure reason and move on to the next source.
+    """
     limiter = RateLimiter()
     sources = DIRECTORY_SOURCES.get(region, [])
 
     all_leads = []
     for source in sources:
         listing_url = source["url"] + source.get("category_path", "")
-        leads = scrape_directory_page(listing_url, source["name"], limiter)
-        for lead in leads:
-            lead["region"] = region
-        all_leads.extend(leads)
+        try:
+            leads = scrape_directory_page(listing_url, source["name"], limiter)
+            for lead in leads:
+                lead["region"] = region
+            all_leads.extend(leads)
+        except Exception as e:
+            print(f"[directory_scraper] Skipped {source['name']} ({listing_url}): {e}")
+            continue
 
     return all_leads

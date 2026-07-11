@@ -69,8 +69,12 @@ def run_maps_scrape(industries=None, regions=None):
     try:
         for region in regions:
             for query in MAPS_CATEGORIES:
-                leads = search_maps(query, region, limiter, driver=driver)
-                all_leads.extend(leads)
+                try:
+                    leads = search_maps(query, region, limiter, driver=driver)
+                    all_leads.extend(leads)
+                except Exception as e:
+                    print(f"[maps_scraper] Skipped '{query}' in {region}: {e}")
+                    continue
     finally:
         driver.quit()
 
