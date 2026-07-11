@@ -1,8 +1,5 @@
 """
 BeautifulSoup scraper for static directory pages (IndiaMART, Europages, etc.)
-
-These pages don't need JS rendering, so plain requests + BeautifulSoup is
-enough - no reason to spin up a full browser session for them.
 """
 
 import requests
@@ -16,31 +13,54 @@ HEADERS = {
 }
 
 
-def scrape_directory_page(url: str, limiter: RateLimiter):
+def parse_indiamart_page(html: str, source_url: str):
     """
-    Fetch and parse a single directory listing page.
+    Parse an IndiaMART category listing page.
+    Each listing card is <li class="pCard1">.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    leads = []
 
-    NOTE: stub - selectors depend on each directory site's HTML structure.
-    Build one parser function per directory (they won't share a layout).
-    """
+    for card in soup.select("li.pCard1"):
+        name_link = card.select_one(".wlc1 a")
+        if not name_link:
+            continue
+
+        company_name = name_link.get_text(strip=True)
+        website = name_link.get("href")
+
+        locality_tag = card.select_one("[itemprop='addressLocality']")
+        address = locality_tag.get_text(strip=True) if locality_tag else None
+
+        leads.append({
+            "company_name": company_name,
+            "website": website,
+            "email": None,
+            "phone": None,
+            "address": address,
+            "source": "directory",
+            "source_url": source_url,
+        })
+
+    return leads
+
+
+PARSERS = {
+    "IndiaMART": parse_indiamart_page,
+}
+
+
+def scrape_directory_page(url: str, source_name: str, limiter: RateLimiter):
+    """Fetch a directory page and parse it with the right parser for that site."""
     limiter.wait()
     response = requests.get(url, headers=HEADERS, timeout=15)
     response.raise_for_status()
 
-    soup = BeautifulSoup(response.text, "html.parser")
+    parser = PARSERS.get(source_name)
+    if parser is None:
+        return []
 
-    # TODO: replace with real selectors once a specific directory is chosen.
-    # Example shape of what each parser should return:
-    lead = {
-        "company_name": None,   # soup.select_one("...").get_text(strip=True)
-        "website": None,
-        "email": None,
-        "phone": None,
-        "address": None,
-        "source": "directory",
-        "source_url": url,
-    }
-    return lead
+    return parser(response.text, url)
 
 
 def run_directory_scrape(region: str):
@@ -51,8 +71,9 @@ def run_directory_scrape(region: str):
     all_leads = []
     for source in sources:
         listing_url = source["url"] + source.get("category_path", "")
-        lead = scrape_directory_page(listing_url, limiter)
-        lead["region"] = region
-        all_leads.append(lead)
+        leads = scrape_directory_page(listing_url, source["name"], limiter)
+        for lead in leads:
+            lead["region"] = region
+        all_leads.extend(leads)
 
     return all_leads
