@@ -34,7 +34,7 @@ MAPS_CATEGORIES = [
 DIRECTORY_SOURCES = {
     "India": [
         {"name": "IndiaMART", "url": "https://dir.indiamart.com/", "category_path": "impcat/pharmaceutical-drug.html"},
-        {"name": "TradeIndia", "url": "https://www.tradeindia.com/", "category_path": ""},
+        {"name": "TradeIndia", "url": "https://www.tradeindia.com/", "category_path": "manufacturers/pharmaceutical-drugs.html"},
         {"name": "ExportersIndia", "url": "https://www.exportersindia.com/", "category_path": ""},
     ],
     "Southeast Asia": [

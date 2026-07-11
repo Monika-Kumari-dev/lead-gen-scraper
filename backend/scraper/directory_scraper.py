@@ -45,8 +45,50 @@ def parse_indiamart_page(html: str, source_url: str):
     return leads
 
 
+def parse_tradeindia_page(html: str, source_url: str):
+    """
+    Parse a TradeIndia category listing page.
+
+    Each card is <div class="product-info-cnt responsive-card">. Company
+    name + TradeIndia profile link are in .supplier-details .top-cont h3 a.
+    City is the second <h3> in that same block. Note: the link goes to the
+    company's TradeIndia profile page, not their own external website
+    (unlike IndiaMART) - still a valid contact path.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    leads = []
+
+    for card in soup.select("div.product-info-cnt"):
+        top_cont = card.select_one(".supplier-details .top-cont")
+        if not top_cont:
+            continue
+
+        name_link = top_cont.select_one("h3 a.company-url")
+        if not name_link:
+            continue
+
+        company_name = name_link.get_text(strip=True)
+        profile_url = name_link.get("href")
+
+        headings = top_cont.select("h3")
+        address = headings[1].get_text(strip=True) if len(headings) > 1 else None
+
+        leads.append({
+            "company_name": company_name,
+            "website": profile_url,  # TradeIndia profile page, not external site
+            "email": None,
+            "phone": None,
+            "address": address,
+            "source": "directory",
+            "source_url": source_url,
+        })
+
+    return leads
+
+
 PARSERS = {
     "IndiaMART": parse_indiamart_page,
+    "TradeIndia": parse_tradeindia_page,
 }
 
 
