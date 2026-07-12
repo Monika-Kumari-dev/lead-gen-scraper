@@ -89,6 +89,14 @@ function App() {
             <h2 className="text-sm font-medium text-slate-300">
               Results {results.length > 0 && `(${results.length})`}
             </h2>
+            {results.length > 0 && (
+              
+                href={`${API_BASE}/api/export/csv`}
+                className="bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-md text-xs font-medium"
+              >
+                Export CSV
+              </a>
+            )}
           </div>
 
           {results.length === 0 ? (
