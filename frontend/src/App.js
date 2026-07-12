@@ -90,12 +90,7 @@ function App() {
               Results {results.length > 0 && `(${results.length})`}
             </h2>
             {results.length > 0 && (
-              
-                href={`${API_BASE}/api/export/csv`}
-                className="bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-md text-xs font-medium"
-              >
-                Export CSV
-              </a>
+              <a href={`${API_BASE}/api/export/csv`} className="bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-md text-xs font-medium">Export CSV</a>
             )}
           </div>
 
