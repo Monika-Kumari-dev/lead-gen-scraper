@@ -54,6 +54,7 @@ def start_search(payload: SearchRequest, db: Session = Depends(get_db)):
             email=lead_data.get("email"),
             phone=lead_data.get("phone"),
             address=lead_data.get("address"),
+            image_url=lead_data.get("image_url"),
             source=lead_data.get("source"),
             source_url=lead_data.get("source_url"),
         )

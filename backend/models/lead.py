@@ -21,7 +21,7 @@ class Lead(Base):
     industry = Column(String(100))          # e.g. "pharma_manufacturing", "general_manufacturing"
     region = Column(String(100))            # e.g. "India", "Southeast Asia", "Middle East", "Europe"
     country = Column(String(100))
-
+    image_url = Column(String(500), nullable=True)
     website = Column(String(500))
     email = Column(String(255))
     phone = Column(String(50))

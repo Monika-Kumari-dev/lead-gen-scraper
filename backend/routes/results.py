@@ -1,46 +1,28 @@
 """
-GET /api/results - fetch stored leads for the dashboard's results table.
-PATCH /api/results/{id}/qa - log a spot-check pass/fail + reason for a lead.
+GET   /api/results/          - paginated, searchable list of saved leads
+GET   /api/results/{id}      - single lead detail
+PATCH /api/results/{id}/qa   - update QA status/fail_reason/notes
 """
-
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
-from pydantic import BaseModel
+import math
 from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from sqlalchemy import or_
+from pydantic import BaseModel
 
 from database import get_db
 from models.lead import Lead
+from schemas import LeadOut
 
 router = APIRouter()
 
 
-class LeadOut(BaseModel):
-    id: int
-    company_name: str
-    industry: Optional[str] = None
-    region: Optional[str] = None
-    country: Optional[str] = None
-    website: Optional[str] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    address: Optional[str] = None
-    source: Optional[str] = None
-    source_url: Optional[str] = None
-    qa_status: Optional[str] = None
-    fail_reason: Optional[str] = None
-    qa_notes: Optional[str] = None
-
-    class Config:
-        from_attributes = True
-
-
-class QAUpdate(BaseModel):
-    qa_status: str  # "pass" or "fail"
-    fail_reason: Optional[str] = None
-
-
-@router.get("/", response_model=list[LeadOut])
-def get_results(
+@router.get("/")
+def list_leads(
+    page: int = 1,
+    limit: int = 12,
+    search: Optional[str] = None,
     region: Optional[str] = None,
     industry: Optional[str] = None,
     qa_status: Optional[str] = None,
@@ -48,6 +30,9 @@ def get_results(
 ):
     query = db.query(Lead)
 
+    if search:
+        like = f"%{search}%"
+        query = query.filter(or_(Lead.company_name.ilike(like), Lead.address.ilike(like)))
     if region:
         query = query.filter(Lead.region == region)
     if industry:
@@ -55,19 +40,46 @@ def get_results(
     if qa_status:
         query = query.filter(Lead.qa_status == qa_status)
 
-    return query.order_by(Lead.id.desc()).all()
+    total = query.count()
+    total_pages = max(math.ceil(total / limit), 1)
+    page = max(page, 1)
+
+    leads = (
+        query.order_by(Lead.scraped_at.desc())
+        .offset((page - 1) * limit)
+        .limit(limit)
+        .all()
+    )
+
+    return {
+        "data": [LeadOut.model_validate(l) for l in leads],
+        "pagination": {"page": page, "limit": limit, "total": total, "totalPages": total_pages},
+    }
+
+
+@router.get("/{lead_id}", response_model=LeadOut)
+def get_lead(lead_id: int, db: Session = Depends(get_db)):
+    lead = db.query(Lead).filter(Lead.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    return lead
+
+
+class QaUpdate(BaseModel):
+    qa_status: str
+    fail_reason: Optional[str] = None
+    qa_notes: Optional[str] = None
 
 
 @router.patch("/{lead_id}/qa", response_model=LeadOut)
-def update_qa(lead_id: int, payload: QAUpdate, db: Session = Depends(get_db)):
-    """Used by the manual spot-check step to log pass/fail + reason why."""
+def update_qa(lead_id: int, payload: QaUpdate, db: Session = Depends(get_db)):
     lead = db.query(Lead).filter(Lead.id == lead_id).first()
     if not lead:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Lead not found")
 
     lead.qa_status = payload.qa_status
     lead.fail_reason = payload.fail_reason
+    lead.qa_notes = payload.qa_notes
     db.commit()
     db.refresh(lead)
     return lead

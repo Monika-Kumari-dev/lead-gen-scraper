@@ -24,7 +24,7 @@ from scraper.config import MAPS_CATEGORIES, REGIONS
 
 FEED_SELECTOR = "div[role='feed']"
 CARD_SELECTOR = "div[role='article']"
-MAX_SCROLLS = 8  # bounds how many times we scroll for more results per search
+MAX_SCROLLS = 8  
 
 
 def build_driver(headless: bool = True):
@@ -46,35 +46,20 @@ def _parse_card(card):
         "website": None,
         "phone": None,
         "address": None,
+        "image_url": None,   
         "source": "google_maps",
     }
 
-    try:
-        name_link = card.find_element(By.CSS_SELECTOR, "a.hfpxzc")
-        lead["company_name"] = name_link.get_attribute("aria-label")
-        lead["source_url"] = name_link.get_attribute("href")
-    except Exception:
-        pass
+   
 
     try:
-        website_link = card.find_element(By.CSS_SELECTOR, "a[aria-label^='Visit']")
-        lead["website"] = website_link.get_attribute("href")
-    except Exception:
-        pass
-
-    try:
-        info_blocks = card.find_elements(By.CSS_SELECTOR, "div.W4Efsd")
-        if info_blocks:
-            text = info_blocks[0].text
-            parts = [p.strip() for p in text.split("\xb7")]
-            if len(parts) > 1:
-                lead["address"] = parts[-1]
-    except Exception:
-        pass
-
-    try:
-        phone_span = card.find_element(By.CSS_SELECTOR, "span.UsdlK")
-        lead["phone"] = phone_span.text
+        img_el = card.find_element(By.CSS_SELECTOR, "img")
+        src = img_el.get_attribute("src")
+        # Google's Maps thumbnails are usually tiny (e.g. "...=w86-h86-k-no").
+        # Bumping the size params gets a larger image from the same URL.
+        if src and "=w" in src:
+            src = src.split("=w")[0] + "=w400-h300-k-no"
+        lead["image_url"] = src
     except Exception:
         pass
 

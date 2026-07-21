@@ -1,14 +1,8 @@
-"""
-Lead Generation Scraper - FastAPI backend entry point.
-
-Run with: uvicorn main:app --reload
-Swagger docs available at: http://127.0.0.1:8000/docs
-"""
-
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
-from routes import search, results, export
+from routes import search, results, export, auth
+from auth import get_current_user
 
 app = FastAPI(
     title="Lead Generation Scraper API",
@@ -16,7 +10,6 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# Allow the React dev server to call this API during development.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -25,9 +18,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(search.router, prefix="/api/search", tags=["search"])
-app.include_router(results.router, prefix="/api/results", tags=["results"])
-app.include_router(export.router, prefix="/api/export", tags=["export"])
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(search.router, prefix="/api/search", tags=["search"], dependencies=[Depends(get_current_user)])
+app.include_router(results.router, prefix="/api/results", tags=["results"], dependencies=[Depends(get_current_user)])
+app.include_router(export.router, prefix="/api/export", tags=["export"], dependencies=[Depends(get_current_user)])
 
 
 @app.get("/")
